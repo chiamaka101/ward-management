@@ -7,6 +7,7 @@ def home(request):
         illness = request.POST.get('illness')
         prescription = request.POST.get('prescription')
         bill_balance = int(request.POST.get('bill_balance', 0))
+       
         Patient.objects.create(
             name=name, 
             illness=illness,
