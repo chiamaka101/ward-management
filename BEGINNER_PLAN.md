@@ -311,22 +311,4 @@ patient['doctor_id'] = 2  # Now John is linked to Doctor 2!
 Happy coding! 🚀
 ```
 
-**I've created a comprehensive guide that she can use immediately!** The file includes:
-
-✅ **Complete working code** - Copy-paste ready  
-✅ **8 Functions** - Add, view, delete doctors and patients  
-✅ **Doctor-Patient Linking** - Using simple `doctor_id`  
-✅ **Interactive Menu** - Easy to use  
-✅ **Clear Examples** - Shows exactly what happens  
-✅ **Step-by-step Explanations** - For beginners  
-
-Would you like me to create any additional files, such as:
-- A practice exercises file?
-- A troubleshooting guide?
-- A file with more detailed comments in the code?
-
-
-
-
-
 
