@@ -1,3 +1,6 @@
+
+
+
 ward management project 
 
  A django web app for hospital to admit patients, track illness,presciption, bill balance and discharge them.
