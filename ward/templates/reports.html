@@ -1,0 +1,199 @@
+<!DOCTYPE html>
+<html lang="en" data-bs-theme="light">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Ward Reports</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    body { 
+      font-family: 'Inter', sans-serif; 
+      background: linear-gradient(135deg, #e0f2fe 0%, #f8fafc 50%, #e0e7ff 100%);
+      min-height: 100vh;
+    }
+    .navbar { 
+      backdrop-filter: blur(10px); 
+      background-color: rgba(255,255,255,.85);
+      box-shadow: 0 1px 3px rgba(0,0,0,.04);
+    }
+    .card { 
+      border: 0; 
+      background-color: rgba(255,255,255,.9);
+      backdrop-filter: blur(8px);
+      box-shadow: 0 1px 3px rgba(0,0,0,.05), 0 10px 15px -3px rgba(0,0,0,.05);
+    }
+    .stat-card { border-left: 4px solid; }
+    .progress { height: 25px; font-size: 0.875rem; }
+  </style>
+</head>
+<body>
+  <nav class="navbar navbar-expand-lg border-bottom sticky-top mb-4">
+    <div class="container-xxl">
+      <a class="navbar-brand text-primary fw-bold" href="{% url 'home' %}">
+        <i class="bi bi-hospital-fill"></i> Ward Management
+      </a>
+      <div class="d-flex align-items-center gap-3">
+        <a href="{% url 'home' %}" class="btn btn-sm btn-outline-primary">
+          <i class="bi bi-house"></i> <span class="d-none d-sm-inline">Home</span>
+        </a>
+        <span class="text-muted small d-none d-xl-inline">
+          <i class="bi bi-person-circle"></i> {{ user.email }}
+        </span>
+        <form action="{% url 'logout' %}" method="POST" class="d-inline">
+          {% csrf_token %}
+          <button type="submit" class="btn btn-outline-danger btn-sm">
+            <i class="bi bi-box-arrow-right"></i> <span class="d-none d-sm-inline">Logout</span>
+          </button>
+        </form>
+      </div>
+    </div>
+  </nav>
+
+  <div class="container-xxl">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+      <h3 class="mb-0"><i class="bi bi-bar-chart-fill"></i> Ward Reports</h3>
+      <span class="text-muted small d-none d-md-block">Updated {% now "M d, Y H:i" %}</span>
+    </div>
+    
+    
+    <div class="row g-3 mb-4">
+      <div class="col-6 col-lg-3">
+        <div class="card stat-card border-primary h-100">
+          <div class="card-body">
+            <div class="d-flex justify-content-between align-items-start">
+              <div>
+                <p class="text-muted mb-1 small text-uppercase">Total Admissions</p>
+                <h2 class="mb-0">{{ total_admissions }}</h2>
+              </div>
+              <i class="bi bi-person-plus text-primary fs-2 opacity-25"></i>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="col-6 col-lg-3">
+        <div class="card stat-card border-success h-100">
+          <div class="card-body">
+            <div class="d-flex justify-content-between align-items-start">
+              <div>
+                <p class="text-muted mb-1 small text-uppercase">Discharged</p>
+                <h2 class="mb-0">{{ total_discharged }}</h2>
+              </div>
+              <i class="bi bi-check-circle text-success fs-2 opacity-25"></i>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="col-6 col-lg-3">
+        <div class="card stat-card border-info h-100">
+          <div class="card-body">
+            <div class="d-flex justify-content-between align-items-start">
+              <div>
+                <p class="text-muted mb-1 small text-uppercase">Active Patients</p>
+                <h2 class="mb-0">{{ active_patients }}</h2>
+              </div>
+              <i class="bi bi-people text-info fs-2 opacity-25"></i>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="col-6 col-lg-3">
+        <div class="card stat-card border-danger h-100">
+          <div class="card-body">
+            <div class="d-flex justify-content-between align-items-start">
+              <div>
+                <p class="text-muted mb-1 small text-uppercase">Outstanding</p>
+                <h2 class="mb-0">₦{{ total_outstanding }}</h2>
+              </div>
+              <i class="bi bi-cash-stack text-danger fs-2 opacity-25"></i>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    
+    <div class="row g-3">
+      <div class="col-12 col-lg-6">
+        <div class="card h-100">
+          <div class="card-header bg-white border-0 pt-3 pb-0">
+            <h5 class="mb-0"><i class="bi bi-hospital"></i> Bed Occupancy</h5>
+            <small class="text-muted">{{ bed_stats.total }} total beds</small>
+          </div>
+          <div class="card-body">
+            <div class="mb-4">
+              <div class="d-flex justify-content-between mb-2">
+                <span><i class="bi bi-circle-fill text-success"></i> Available</span>
+                <strong>{{ bed_stats.available }} / {{ bed_stats.total }}</strong>
+              </div>
+              <div class="progress">
+                <div class="progress-bar bg-success" {{ bed_percentages.available }}%">
+                  {{ bed_percentages.available }}%
+                </div>
+              </div>
+            </div>
+
+            <div class="mb-4">
+              <div class="d-flex justify-content-between mb-2">
+                <span><i class="bi bi-circle-fill text-danger"></i> Occupied</span>
+                <strong>{{ bed_stats.occupied }} / {{ bed_stats.total }}</strong>
+              </div>
+              <div class="progress">
+                <div class="progress-bar bg-danger"  {{ bed_percentages.occupied }}%">
+                  {{ bed_percentages.occupied }}%
+                </div>
+              </div>
+            </div>
+
+            <div class="mb-0">
+              <div class="d-flex justify-content-between mb-2">
+                <span><i class="bi bi-circle-fill text-warning"></i> Maintenance</span>
+                <strong>{{ bed_stats.maintenance }} / {{ bed_stats.total }}</strong>
+              </div>
+              <div class="progress">
+                <div class="progress-bar bg-warning" {{ bed_percentages.maintenance|default:0 }}%">
+                  {{ bed_percentages.maintenance }}%
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="col-12 col-lg-6">
+        <div class="card h-100">
+          <div class="card-header bg-white border-0 pt-3 pb-0">
+            <h5 class="mb-0"><i class="bi bi-cash-stack"></i> Financial Summary</h5>
+            <small class="text-muted">Active patients only</small>
+          </div>
+          <div class="card-body">
+            <div class="mb-4 pb-4 border-bottom">
+              <p class="text-muted mb-1 small text-uppercase">Total Outstanding</p>
+              <h1 class="mb-2 text-danger">₦{{ total_outstanding }}</h1>
+              <small class="text-muted">From {{ active_patients }} active patient{{ active_patients|pluralize }}</small>
+            </div>
+            
+            <div class="row g-3">
+              <div class="col-6">
+                <div class="p-3 bg-light rounded">
+                  <p class="text-muted mb-1 small text-uppercase">Avg per Patient</p>
+                  <h4 class="mb-0">₦{{ avg_bill }}</h4>
+                </div>
+              </div>
+              <div class="col-6">
+                <div class="p-3 bg-light rounded">
+                  <p class="text-muted mb-1 small text-uppercase">Discharge Rate</p>
+                  <h4 class="mb-0">{{ discharge_rate }}%</h4>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</body>
+</html>
