@@ -1,0 +1,307 @@
+<!DOCTYPE html>
+<html lang="en" data-bs-theme="light">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Staff Scheduling</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+  :root {
+    --med-blue: #0284c7;
+    --med-dark: #151718;
+    --med-teal: #0d9488;
+    --med-accent: #06b6d4;
+    --staff-green: #059669;
+  }
+  
+  body {
+    font-family: 'Inter', sans-serif;
+    background: linear-gradient(135deg, #ecfdf5 0%, #f0fdf4 50%, #d1fae5 100%);
+    background-attachment: fixed;
+    min-height: 100vh;
+  }
+  
+  .navbar.bg-white {
+    backdrop-filter: blur(12px);
+    background: rgba(255, 255, 255, 0.95);
+    box-shadow: 0 2px 12px rgba(5, 150, 105, 0.1);
+  }
+  
+  .card {
+    border: none;
+    transition: transform 0.2s;
+    background: rgba(255, 255, 255, 0.95);
+    backdrop-filter: blur(8px);
+  }
+  
+  .card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 24px rgba(5, 150, 105, 0.15);
+  }
+  
+  .navbar .btn-outline-primary,
+  .btn-outline-primary {
+    color: var(--staff-green);
+    border-color: var(--staff-green);
+  }
+  
+  .btn-primary {
+    background: linear-gradient(135deg, var(--staff-green), #10b981);
+    border: none;
+  }
+  
+  .btn-primary:hover {
+    background: #047857;
+    transform: translateY(-1px);
+  }
+  
+  .border-primary {
+    border-color: var(--staff-green);
+  }
+
+  .btn-outline-primary.active,
+  .btn-outline-primary:active,
+  .btn-outline-primary:focus,
+  .btn-outline-primary:focus-visible {
+    background: #047857;
+    border-color: #047857;
+    color: #ffffff;
+    box-shadow: none;
+  }
+
+  .btn-outline-primary:hover {
+    background: #065f46;
+    border-color: #065f46;
+    color: #ffffff;
+  }
+
+  .modal-content {
+    background: rgba(255, 255, 255, 0.98);
+    backdrop-filter: blur(12px);
+  }
+
+  .navbar-brand.text-primary {
+    color: var(--staff-green);
+  }
+</style>
+   
+</head>
+<body>
+  <nav class="navbar navbar-expand-lg border-bottom sticky-top mb-4">
+    <div class="container-xxl">
+      <a class="navbar-brand text-primary fw-bold" href="{% url 'home' %}">
+        <i class="bi bi-hospital-fill"></i> Ward Management
+      </a>
+      <div class="d-flex align-items-center gap-3">
+        <a href="{% url 'home' %}" class="btn btn-sm btn-outline-primary">
+          <i class="bi bi-house"></i> <span class="d-none d-sm-inline">Home</span>
+        </a>
+        <a href="{% url 'reports' %}" class="btn btn-sm btn-outline-primary">
+          <i class="bi bi-bar-chart"></i> <span class="d-none d-sm-inline">Reports</span>
+        </a>
+        <span class="text-muted small d-none d-xl-inline">
+          <i class="bi bi-person-circle"></i> {{ user.email }}
+        </span>
+        <form action="{% url 'logout' %}" method="POST" class="d-inline">
+          {% csrf_token %}
+          <button type="submit" class="btn btn-outline-danger btn-sm">
+            <i class="bi bi-box-arrow-right"></i> <span class="d-none d-sm-inline">Logout</span>
+          </button>
+        </form>
+      </div>
+    </div>
+  </nav>
+
+  <div class="container-xxl">
+    {% if messages %}
+      {% for message in messages %}
+        <div class="alert alert-{{ message.tags }} alert-dismissible fade show" role="alert">
+          {{ message }}
+          <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        </div>
+      {% endfor %}
+    {% endif %}
+
+    <div class="d-flex justify-content-between align-items-center mb-4">
+      <h3 class="mb-0"><i class="bi bi-calendar-week"></i> Staff Scheduling</h3>
+      <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#addShiftModal">
+        <i class="bi bi-plus-lg"></i> <span class="d-none d-sm-inline">Add Shift</span>
+      </button>
+    </div>
+
+    <div class="card">
+      <div class="table-responsive">
+        <table class="table table-hover align-middle mb-0">
+          <thead class="table-light">
+            <tr>
+              <th>Staff</th>
+              <th>Role</th>
+              <th>Ward</th>
+              <th>Start Time</th>
+              <th>End Time</th>
+              <th>Duration</th>
+              <th>Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for shift in shifts %}
+            <tr>
+              <td class="fw-600">{{ shift.staff.user.email }}</td>
+              <td><span class="badge text-bg-secondary">{{ shift.staff.get_role_display }}</span></td>
+              <td>{{ shift.ward }}</td>
+              <td>{{ shift.start_time|date:"M d, H:i" }}</td>
+              <td>{{ shift.end_time|date:"M d, H:i" }}</td>
+              <td>{{ shift.end_time|timeuntil:shift.start_time }}</td>
+              <td>
+                <div class="btn-group btn-group-sm">
+                  <button class="btn btn-outline-primary" data-bs-toggle="modal" data-bs-target="#editShiftModal{{ shift.id }}">
+                    <i class="bi bi-pencil"></i>
+                  </button>
+                  <button class="btn btn-outline-danger" data-bs-toggle="modal" data-bs-target="#deleteShiftModal{{ shift.id }}">
+                    <i class="bi bi-trash"></i>
+                  </button>
+                </div>
+              </td>
+            </tr>
+            {% empty %}
+            <tr><td colspan="7" class="text-center text-muted py-5">
+              <i class="bi bi-calendar-x fs-1 d-block mb-2"></i>
+              No shifts scheduled yet
+            </td></tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- Add Shift Modal -->
+  <div class="modal fade" id="addShiftModal" tabindex="-1">
+    <div class="modal-dialog">
+      <div class="modal-content">
+        <form method="post">
+          {% csrf_token %}
+          <div class="modal-header">
+            <h5 class="modal-title"><i class="bi bi-calendar-plus"></i> Schedule Shift</h5>
+            <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+          </div>
+          <div class="modal-body">
+            <div class="mb-3">
+              <label class="form-label">Staff Member</label>
+              <select name="staff" class="form-select" required>
+                <option value="">Select staff</option>
+                {% for staff in staff_list %}
+                  <option value="{{ staff.id }}">{{ staff.user.email }} - {{ staff.get_role_display }}</option>
+                {% endfor %}
+              </select>
+            </div>
+            <div class="mb-3">
+              <label class="form-label">Ward</label>
+              <select name="ward" class="form-select" required>
+                <option value="">Select ward</option>
+                {% for ward in wards %}
+                  <option value="{{ ward }}">{{ ward }}</option>
+                {% endfor %}
+              </select>
+            </div>
+            <div class="mb-3">
+              <label class="form-label">Start Time</label>
+              <input type="datetime-local" name="start_time" class="form-control" required>
+            </div>
+            <div class="mb-3">
+              <label class="form-label">End Time</label>
+              <input type="datetime-local" name="end_time" class="form-control" required>
+            </div>
+          </div>
+          <div class="modal-footer">
+            <button type="button" class="btn btn-light" data-bs-dismiss="modal">Cancel</button>
+            <button type="submit" class="btn btn-primary">
+              <i class="bi bi-check-lg"></i> Schedule Shift
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  
+  {% for shift in shifts %}
+  <div class="modal fade" id="editShiftModal{{ shift.id }}" tabindex="-1">
+    <div class="modal-dialog">
+      <div class="modal-content">
+        <form method="post" action="{% url 'edit_shift' shift.id %}">
+          {% csrf_token %}
+          <div class="modal-header">
+            <h5 class="modal-title"><i class="bi bi-pencil"></i> Edit Shift</h5>
+            <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+          </div>
+          <div class="modal-body">
+            <div class="mb-3">
+              <label class="form-label">Staff Member</label>
+              <select name="staff" class="form-select" required>
+                {% for staff in staff_list %}
+                  <option value="{{ staff.id }}" {% if staff.id == shift.staff.id %}selected{% endif %}>
+                    {{ staff.user.email }} - {{ staff.get_role_display }}
+                  </option>
+                {% endfor %}
+              </select>
+            </div>
+            <div class="mb-3">
+              <label class="form-label">Ward</label>
+              <select name="ward" class="form-select" required>
+                {% for ward in wards %}
+                  <option value="{{ ward }}" {% if ward == shift.ward %}selected{% endif %}>{{ ward }}</option>
+                {% endfor %}
+              </select>
+            </div>
+            <div class="mb-3">
+              <label class="form-label">Start Time</label>
+              <input type="datetime-local" name="start_time" class="form-control" 
+                     value="{{ shift.start_time|date:'Y-m-d\TH:i' }}" required>
+            </div>
+            <div class="mb-3">
+              <label class="form-label">End Time</label>
+              <input type="datetime-local" name="end_time" class="form-control" 
+                     value="{{ shift.end_time|date:'Y-m-d\TH:i' }}" required>
+            </div>
+          </div>
+          <div class="modal-footer">
+            <button type="button" class="btn btn-light" data-bs-dismiss="modal">Cancel</button>
+            <button type="submit" class="btn btn-primary">Save Changes</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+
+
+  <div class="modal fade" id="deleteShiftModal{{ shift.id }}" tabindex="-1">
+    <div class="modal-dialog">
+      <div class="modal-content">
+        <form method="post" action="{% url 'delete_shift' shift.id %}">
+          {% csrf_token %}
+          <div class="modal-header">
+            <h5 class="modal-title text-danger"><i class="bi bi-trash"></i> Delete Shift</h5>
+            <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+          </div>
+          <div class="modal-body">
+            <p>Delete shift for <strong>{{ shift.staff.user.email }}</strong> in <strong>{{ shift.ward }}</strong>?</p>
+            <p class="text-muted small mb-0">
+              {{ shift.start_time|date:"M d, H:i" }} - {{ shift.end_time|date:"M d, H:i" }}
+            </p>
+          </div>
+          <div class="modal-footer">
+            <button type="button" class="btn btn-light" data-bs-dismiss="modal">Cancel</button>
+            <button type="submit" class="btn btn-danger">Delete</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+  {% endfor %}
+
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>
