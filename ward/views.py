@@ -39,7 +39,7 @@ def home(request):
             bed = Bed.objects.filter(id=bed_id, status='available').first()
             if not bed:
                 messages.error(request, "Selected bed is no longer available.")
-                return redirect('home')
+                return HttpResponse("It works")
         
         patient = Patient.objects.create(
             name=name,
