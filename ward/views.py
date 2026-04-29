@@ -1,14 +1,13 @@
 from django.contrib.auth.decorators import login_required
 from django.views.decorators.http import require_POST
 from django.contrib.auth import login
-from django.shortcuts import render, redirect
+from django.shortcuts import render, redirect, get_object_or_404
 from django.db.models import Sum, Count, Q
 from django.utils import timezone
 from django.contrib import messages
 
 from .models import Patient, Bed, Staff, Shift, Department, Doctor, Appointment, MedicalRecord
 from .forms import EmailRegisterForm
-
 
 # -------------------------
 # AUTH
@@ -27,24 +26,60 @@ def register(request):
 
     return render(request, 'registration/register.html', {'form': form})
 
-
 # -------------------------
 # HOME
 # -------------------------
-
 @login_required
 def home(request):
+    # Handle Add Patient POST from modal
+    if request.method == 'POST':
+        name = request.POST.get('name')
+        gender = request.POST.get('gender')
+        dob = request.POST.get('dob') or None
+        phone = request.POST.get('phone')
+        insurance = request.POST.get('insurance', '')
+        address = request.POST.get('address', '')
+
+        if name:
+            Patient.objects.create(
+                name=name,
+                gender=gender,
+                dob=dob,
+                phone=phone,
+                insurance=insurance,
+                address=address,
+                bill_balance=0
+            )
+            messages.success(request, f"{name} admitted successfully.")
+        else:
+            messages.error(request, "Patient name is required.")
+        return redirect('home')
+
+    # GET request - show dashboard
     context = {
-        'patients': Patient.objects.filter(is_discharged=False),
+        'patients': Patient.objects.filter(is_discharged=False).select_related('bed'),
         'available_beds': Bed.objects.filter(status='available'),
         'doctors_count': Doctor.objects.count(),
         'appointments_today': Appointment.objects.filter(
             date_time__date=timezone.now().date()
         ).count(),
+        'departments': Department.objects.all(),  # Added for doctor modal
     }
     return render(request, 'home.html', context)
-    return render(request, 'home.html', context)
 
+# -------------------------
+# ADD DEPARTMENT
+# -------------------------
+@login_required
+@require_POST
+def add_department(request):
+    name = request.POST.get('name')
+    if name:
+        Department.objects.get_or_create(name=name)
+        messages.success(request, f"Department '{name}' created.")
+    else:
+        messages.error(request, "Department name is required.")
+    return redirect('home')
 
 # -------------------------
 # DISCHARGE PATIENT
@@ -52,11 +87,7 @@ def home(request):
 @login_required
 @require_POST
 def discharge_patient(request, pk):
-    patient = Patient.objects.filter(pk=pk, is_discharged=False).first()
-
-    if not patient:
-        messages.error(request, "Patient not found or already discharged.")
-        return redirect('home')
+    patient = get_object_or_404(Patient, pk=pk, is_discharged=False)
 
     patient.is_discharged = True
     patient.discharged_at = timezone.now()
@@ -70,18 +101,13 @@ def discharge_patient(request, pk):
     messages.success(request, f"{patient.name} discharged successfully.")
     return redirect('home')
 
-
 # -------------------------
 # EDIT PATIENT
 # -------------------------
 @login_required
 @require_POST
 def edit_patient(request, pk):
-    patient = Patient.objects.filter(pk=pk).first()
-
-    if not patient:
-        messages.error(request, "Patient not found.")
-        return redirect('home')
+    patient = get_object_or_404(Patient, pk=pk)
 
     old_bed = patient.bed
     new_bed_id = request.POST.get('bed')
@@ -94,15 +120,10 @@ def edit_patient(request, pk):
     patient.address = request.POST.get('address', '')
     patient.bill_balance = int(request.POST.get('bill_balance', 0))
 
-    # ---------------- BED LOGIC ----------------
+    # BED LOGIC
     if new_bed_id:
         if not old_bed or str(old_bed.id) != str(new_bed_id):
-
-            new_bed = Bed.objects.filter(id=new_bed_id).first()
-
-            if not new_bed:
-                messages.error(request, "Selected bed does not exist.")
-                return redirect('home')
+            new_bed = get_object_or_404(Bed, id=new_bed_id)
 
             if new_bed.status != 'available':
                 messages.error(request, f"Bed {new_bed.bed_number} is not available.")
@@ -115,7 +136,6 @@ def edit_patient(request, pk):
             patient.bed = new_bed
             new_bed.status = 'occupied'
             new_bed.save()
-
     else:
         if old_bed:
             old_bed.status = 'available'
@@ -125,7 +145,6 @@ def edit_patient(request, pk):
     patient.save()
     messages.success(request, f"{patient.name} updated successfully.")
     return redirect('home')
-
 
 # -------------------------
 # APPOINTMENTS
@@ -157,7 +176,6 @@ def appointments(request):
         'doctors': Doctor.objects.all(),
     })
 
-
 # -------------------------
 # DOCTORS
 # -------------------------
@@ -180,13 +198,12 @@ def doctors(request):
         else:
             messages.error(request, "Fill all required fields.")
 
-        return redirect('doctors')
+        return redirect('home')  # Changed to home so modal works from dashboard
 
     return render(request, 'doctors.html', {
         'doctors': Doctor.objects.select_related('department'),
         'departments': Department.objects.all(),
     })
-
 
 # -------------------------
 # REPORTS
@@ -215,7 +232,6 @@ def reports(request):
         'total_outstanding': total_outstanding,
         'bed_stats': bed_stats,
     })
-
 
 # -------------------------
 # STAFF SCHEDULE
@@ -247,25 +263,20 @@ def staff_schedule(request):
         'wards': Bed.objects.values_list('ward', flat=True).distinct(),
     })
 
-
 # -------------------------
 # SHIFT EDIT
 # -------------------------
 @login_required
 @require_POST
 def edit_shift(request, pk):
-    shift = Shift.objects.filter(pk=pk).first()
-
-    if shift:
-        shift.staff_id = request.POST.get('staff')
-        shift.ward = request.POST.get('ward')
-        shift.start_time = request.POST.get('start_time')
-        shift.end_time = request.POST.get('end_time')
-        shift.save()
-        messages.success(request, "Shift updated.")
-
+    shift = get_object_or_404(Shift, pk=pk)
+    shift.staff_id = request.POST.get('staff')
+    shift.ward = request.POST.get('ward')
+    shift.start_time = request.POST.get('start_time')
+    shift.end_time = request.POST.get('end_time')
+    shift.save()
+    messages.success(request, "Shift updated.")
     return redirect('staff_schedule')
-
 
 # -------------------------
 # DELETE SHIFT

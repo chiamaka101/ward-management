@@ -72,4 +72,5 @@ urlpatterns = [
     # DOCTORS
     # -------------------
     path('doctors/', views.doctors, name='doctors'),
+    path('department/add/', views.add_department, name='add_department'),
 ]
